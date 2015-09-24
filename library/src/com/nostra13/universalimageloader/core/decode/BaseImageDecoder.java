@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2011-2013 Sergey Tarasevich
+ * Copyright 2011-2014 Sergey Tarasevich
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.BitmapFactory.Options;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
-import android.os.Build;
 import com.nostra13.universalimageloader.core.assist.ImageScaleType;
 import com.nostra13.universalimageloader.core.assist.ImageSize;
 import com.nostra13.universalimageloader.core.download.ImageDownloader.Scheme;
@@ -44,6 +43,7 @@ public class BaseImageDecoder implements ImageDecoder {
 	protected static final String LOG_SCALE_IMAGE = "Scale subsampled image (%1$s) to %2$s (scale = %3$.5f) [%4$s]";
 	protected static final String LOG_ROTATE_IMAGE = "Rotate image on %1$d\u00B0 [%2$s]";
 	protected static final String LOG_FLIP_IMAGE = "Flip image horizontally [%s]";
+	protected static final String ERROR_NO_IMAGE_STREAM = "No stream for image [%s]";
 	protected static final String ERROR_CANT_DECODE_IMAGE = "Image can't be decoded [%s]";
 
 	protected final boolean loggingEnabled;
@@ -72,6 +72,10 @@ public class BaseImageDecoder implements ImageDecoder {
 		ImageFileInfo imageInfo;
 
 		InputStream imageStream = getImageStream(decodingInfo);
+		if (imageStream == null) {
+			L.e(ERROR_NO_IMAGE_STREAM, decodingInfo.getImageKey());
+			return null;
+		}
 		try {
 			imageInfo = defineImageSizeAndRotation(imageStream, decodingInfo);
 			imageStream = resetStream(imageStream, decodingInfo);
@@ -111,8 +115,7 @@ public class BaseImageDecoder implements ImageDecoder {
 	}
 
 	private boolean canDefineExifParams(String imageUri, String mimeType) {
-		return Build.VERSION.SDK_INT >= Build.VERSION_CODES.ECLAIR && "image/jpeg".equalsIgnoreCase(mimeType) && Scheme
-				.ofUri(imageUri) == Scheme.FILE;
+		return "image/jpeg".equalsIgnoreCase(mimeType) && (Scheme.ofUri(imageUri) == Scheme.FILE);
 	}
 
 	protected ExifInfo defineExifOrientation(String imageUri) {
@@ -153,6 +156,8 @@ public class BaseImageDecoder implements ImageDecoder {
 		ImageScaleType scaleType = decodingInfo.getImageScaleType();
 		int scale;
 		if (scaleType == ImageScaleType.NONE) {
+			scale = 1;
+		} else if (scaleType == ImageScaleType.NONE_SAFE) {
 			scale = ImageSizeUtils.computeMinImageSampleSize(imageSize);
 		} else {
 			ImageSize targetSize = decodingInfo.getTargetSize();

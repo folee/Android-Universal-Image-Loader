@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2011-2013 Sergey Tarasevich
+ * Copyright 2011-2014 Sergey Tarasevich
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,8 @@ public final class IoUtils {
 
 	/** {@value} */
 	public static final int DEFAULT_BUFFER_SIZE = 32 * 1024; // 32 KB
+	/** {@value} */
+	public static final int DEFAULT_IMAGE_TOTAL_SIZE = 500 * 1024; // 500 Kb
 	/** {@value} */
 	public static final int CONTINUE_LOADING_PERCENTAGE = 75;
 
@@ -64,7 +66,10 @@ public final class IoUtils {
 	public static boolean copyStream(InputStream is, OutputStream os, CopyListener listener, int bufferSize)
 			throws IOException {
 		int current = 0;
-		final int total = is.available();
+		int total = is.available();
+		if (total <= 0) {
+			total = DEFAULT_IMAGE_TOTAL_SIZE;
+		}
 
 		final byte[] bytes = new byte[bufferSize];
 		int count;
@@ -98,20 +103,19 @@ public final class IoUtils {
 	public static void readAndCloseStream(InputStream is) {
 		final byte[] bytes = new byte[DEFAULT_BUFFER_SIZE];
 		try {
-			while (is.read(bytes, 0, DEFAULT_BUFFER_SIZE) != -1) {
-			}
-		} catch (IOException e) {
-			// Do nothing
+			while (is.read(bytes, 0, DEFAULT_BUFFER_SIZE) != -1);
+		} catch (IOException ignored) {
 		} finally {
 			closeSilently(is);
 		}
 	}
 
 	public static void closeSilently(Closeable closeable) {
-		try {
-			closeable.close();
-		} catch (Exception e) {
-			// Do nothing
+		if (closeable != null) {
+			try {
+				closeable.close();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 

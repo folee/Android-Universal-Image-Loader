@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2011-2013 Sergey Tarasevich
+ * Copyright 2011-2014 Sergey Tarasevich
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,9 +70,9 @@ public class LimitedAgeMemoryCache implements MemoryCache {
 	}
 
 	@Override
-	public void remove(String key) {
-		cache.remove(key);
+	public Bitmap remove(String key) {
 		loadingDates.remove(key);
+		return cache.remove(key);
 	}
 
 	@Override

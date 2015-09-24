@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2011-2013 Sergey Tarasevich
+ * Copyright 2011-2014 Sergey Tarasevich
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,14 +85,14 @@ public abstract class LimitedMemoryCache extends BaseMemoryCache {
 	}
 
 	@Override
-	public void remove(String key) {
+	public Bitmap remove(String key) {
 		Bitmap value = super.get(key);
 		if (value != null) {
 			if (hardCache.remove(value)) {
 				cacheSize.addAndGet(-getSize(value));
 			}
 		}
-		super.remove(key);
+		return super.remove(key);
 	}
 
 	@Override

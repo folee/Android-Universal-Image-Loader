@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 Sergey Tarasevich
+ * Copyright 2013-2014 Sergey Tarasevich
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package com.nostra13.universalimageloader.core.imageaware;
 
 import android.graphics.Bitmap;
+import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.widget.ImageView;
@@ -115,6 +116,9 @@ public class ImageViewAware extends ViewAware {
 	@Override
 	protected void setImageDrawableInto(Drawable drawable, View view) {
 		((ImageView) view).setImageDrawable(drawable);
+		if (drawable instanceof AnimationDrawable) {
+			((AnimationDrawable)drawable).start();
+		}
 	}
 
 	@Override

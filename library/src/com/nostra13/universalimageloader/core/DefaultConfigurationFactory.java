@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2011-2013 Sergey Tarasevich
+ * Copyright 2011-2014 Sergey Tarasevich
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,14 @@
  *******************************************************************************/
 package com.nostra13.universalimageloader.core;
 
+import android.annotation.TargetApi;
+import android.app.ActivityManager;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.os.Build;
 import com.nostra13.universalimageloader.cache.disc.DiskCache;
-import com.nostra13.universalimageloader.cache.disc.impl.UnlimitedDiscCache;
-import com.nostra13.universalimageloader.cache.disc.impl.ext.LruDiscCache;
+import com.nostra13.universalimageloader.cache.disc.impl.UnlimitedDiskCache;
+import com.nostra13.universalimageloader.cache.disc.impl.ext.LruDiskCache;
 import com.nostra13.universalimageloader.cache.disc.naming.FileNameGenerator;
 import com.nostra13.universalimageloader.cache.disc.naming.HashCodeFileNameGenerator;
 import com.nostra13.universalimageloader.cache.memory.MemoryCache;
@@ -31,9 +35,11 @@ import com.nostra13.universalimageloader.core.display.BitmapDisplayer;
 import com.nostra13.universalimageloader.core.display.SimpleBitmapDisplayer;
 import com.nostra13.universalimageloader.core.download.BaseImageDownloader;
 import com.nostra13.universalimageloader.core.download.ImageDownloader;
+import com.nostra13.universalimageloader.utils.L;
 import com.nostra13.universalimageloader.utils.StorageUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -79,14 +85,16 @@ public class DefaultConfigurationFactory {
 		File reserveCacheDir = createReserveDiskCacheDir(context);
 		if (diskCacheSize > 0 || diskCacheFileCount > 0) {
 			File individualCacheDir = StorageUtils.getIndividualCacheDirectory(context);
-			LruDiscCache diskCache = new LruDiscCache(individualCacheDir, diskCacheFileNameGenerator, diskCacheSize,
-					diskCacheFileCount);
-			diskCache.setReserveCacheDir(reserveCacheDir);
-			return diskCache;
-		} else {
-			File cacheDir = StorageUtils.getCacheDirectory(context);
-			return new UnlimitedDiscCache(cacheDir, reserveCacheDir, diskCacheFileNameGenerator);
+			try {
+				return new LruDiskCache(individualCacheDir, reserveCacheDir, diskCacheFileNameGenerator, diskCacheSize,
+						diskCacheFileCount);
+			} catch (IOException e) {
+				L.e(e);
+				// continue and create unlimited cache
+			}
 		}
+		File cacheDir = StorageUtils.getCacheDirectory(context);
+		return new UnlimitedDiskCache(cacheDir, reserveCacheDir, diskCacheFileNameGenerator);
 	}
 
 	/** Creates reserve disk cache folder which will be used if primary disk cache folder becomes unavailable */
@@ -103,11 +111,30 @@ public class DefaultConfigurationFactory {
 	 * Creates default implementation of {@link MemoryCache} - {@link LruMemoryCache}<br />
 	 * Default cache size = 1/8 of available app memory.
 	 */
-	public static MemoryCache createMemoryCache(int memoryCacheSize) {
+	public static MemoryCache createMemoryCache(Context context, int memoryCacheSize) {
 		if (memoryCacheSize == 0) {
-			memoryCacheSize = (int) (Runtime.getRuntime().maxMemory() / 8);
+			ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+			int memoryClass = am.getMemoryClass();
+			if (hasHoneycomb() && isLargeHeap(context)) {
+				memoryClass = getLargeMemoryClass(am);
+			}
+			memoryCacheSize = 1024 * 1024 * memoryClass / 8;
 		}
 		return new LruMemoryCache(memoryCacheSize);
+	}
+
+	private static boolean hasHoneycomb() {
+		return Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB;
+	}
+
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private static boolean isLargeHeap(Context context) {
+		return (context.getApplicationInfo().flags & ApplicationInfo.FLAG_LARGE_HEAP) != 0;
+	}
+
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private static int getLargeMemoryClass(ActivityManager am) {
+		return am.getLargeMemoryClass();
 	}
 
 	/** Creates default implementation of {@link ImageDownloader} - {@link BaseImageDownloader} */
@@ -141,8 +168,7 @@ public class DefaultConfigurationFactory {
 
 		DefaultThreadFactory(int threadPriority, String threadNamePrefix) {
 			this.threadPriority = threadPriority;
-			SecurityManager s = System.getSecurityManager();
-			group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
+			group = Thread.currentThread().getThreadGroup();
 			namePrefix = threadNamePrefix + poolNumber.getAndIncrement() + "-thread-";
 		}
 

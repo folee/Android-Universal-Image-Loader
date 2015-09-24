@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2011-2013 Sergey Tarasevich
+ * Copyright 2011-2014 Sergey Tarasevich
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,8 +49,9 @@ public abstract class BaseMemoryCache implements MemoryCache {
 	}
 
 	@Override
-	public void remove(String key) {
-		softMap.remove(key);
+	public Bitmap remove(String key) {
+		Reference<Bitmap> bmpRef = softMap.remove(key);
+		return bmpRef == null ? null : bmpRef.get();
 	}
 
 	@Override
